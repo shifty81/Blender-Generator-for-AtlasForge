@@ -602,6 +602,9 @@ the SDF hull skin wraps around them automatically.
 - [x] OBJ export for Atlas engine
 - [x] Naming prefix system
 - [x] Batch generation support
+- [x] LOD generation pipeline (4 levels, per-class switch distances)
+- [x] Collision mesh generation (convex hull, box, multi-convex)
+- [x] Animation system (turret rotation, bay doors, landing gear, radar spin)
 
 ### 🔲 Planned (Engine-Side)
 
@@ -612,9 +615,6 @@ the SDF hull skin wraps around them automatically.
 - [ ] Player build mode with snap validation
 - [ ] Power flow simulation
 - [ ] Structural integrity checks
-- [ ] LOD generation pipeline
-- [ ] Collision mesh generation
-- [ ] Animation system (bay doors, landing gear, turret rotation)
 
 > **ECS structs and system pseudocode →**
 > [ENGINE_INTEGRATION.md §10–§12](ENGINE_INTEGRATION.md#10-ecs-component-mapping)
