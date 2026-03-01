@@ -34,6 +34,9 @@ from . import texture_generator
 from . import brick_system
 from . import novaforge_importer
 from . import render_setup
+from . import lod_generator
+from . import collision_generator
+from . import animation_system
 
 
 class SpaceshipGeneratorProperties(bpy.types.PropertyGroup):
@@ -269,6 +272,36 @@ class SpaceshipGeneratorProperties(bpy.types.PropertyGroup):
         default=""
     )
 
+    generate_lods: BoolProperty(
+        name="Generate LODs",
+        description="Generate Level of Detail meshes for game engine export",
+        default=False
+    )
+
+    generate_collision: BoolProperty(
+        name="Generate Collision Mesh",
+        description="Generate simplified collision mesh for physics",
+        default=False
+    )
+
+    collision_type: EnumProperty(
+        name="Collision Type",
+        description="Type of collision mesh to generate",
+        items=[
+            ('AUTO', "Auto", "Automatically select based on ship class"),
+            ('CONVEX_HULL', "Convex Hull", "Single convex hull wrapping entire ship"),
+            ('BOX', "Bounding Box", "Oriented bounding box"),
+            ('MULTI_CONVEX', "Multi Convex", "Decomposed into multiple convex parts"),
+        ],
+        default='AUTO'
+    )
+
+    generate_animations: BoolProperty(
+        name="Generate Animations",
+        description="Set up animation actions for turrets, bay doors, landing gear, and sensors",
+        default=False
+    )
+
 
 class SPACESHIP_OT_generate(bpy.types.Operator):
     """Generate a procedural spaceship"""
@@ -302,6 +335,35 @@ class SPACESHIP_OT_generate(bpy.types.Operator):
                 style=props.style,
                 seed=props.seed,
                 weathering=props.weathering,
+            )
+
+        # Generate LOD meshes if requested
+        if props.generate_lods:
+            lod_generator.generate_lods(
+                hull,
+                ship_class=props.ship_class,
+                naming_prefix=props.naming_prefix,
+            )
+
+        # Generate collision mesh if requested
+        if props.generate_collision:
+            col_type = None if props.collision_type == 'AUTO' else props.collision_type
+            collision_generator.generate_collision_mesh(
+                hull,
+                collision_type=col_type,
+                ship_class=props.ship_class,
+                naming_prefix=props.naming_prefix,
+            )
+
+        # Set up animations if requested
+        if props.generate_animations:
+            config = ship_generator.SHIP_CONFIGS.get(
+                props.ship_class, ship_generator.SHIP_CONFIGS['FIGHTER']
+            )
+            animation_system.setup_ship_animations(
+                hull,
+                scale=config['scale'],
+                naming_prefix=props.naming_prefix,
             )
 
         self.report({'INFO'}, f"Generated {props.ship_class} class spaceship")
@@ -609,6 +671,14 @@ class SPACESHIP_PT_main_panel(bpy.types.Panel):
         layout.prop(props, "ship_dna_export_path")
         layout.operator("mesh.export_ship_dna", icon='FILE_TEXT')
 
+        layout.separator()
+        layout.label(text="Game Engine Helpers:")
+        layout.prop(props, "generate_lods")
+        layout.prop(props, "generate_collision")
+        if props.generate_collision:
+            layout.prop(props, "collision_type")
+        layout.prop(props, "generate_animations")
+
 
 # Registration
 classes = (
@@ -646,10 +716,16 @@ def register():
     brick_system.register()
     novaforge_importer.register()
     render_setup.register()
+    lod_generator.register()
+    collision_generator.register()
+    animation_system.register()
 
 
 def unregister():
     # Unregister submodules
+    animation_system.unregister()
+    collision_generator.unregister()
+    lod_generator.unregister()
     render_setup.unregister()
     novaforge_importer.unregister()
     brick_system.unregister()

@@ -37,6 +37,9 @@ def test_addon_structure():
         'brick_system.py',
         'novaforge_importer.py',
         'render_setup.py',
+        'lod_generator.py',
+        'collision_generator.py',
+        'animation_system.py',
     ]
     
     all_exist = True
@@ -69,6 +72,9 @@ def test_file_syntax():
         'brick_system.py',
         'novaforge_importer.py',
         'render_setup.py',
+        'lod_generator.py',
+        'collision_generator.py',
+        'animation_system.py',
     ]
     
     all_valid = True
@@ -154,6 +160,9 @@ def test_register_functions():
         'brick_system.py',
         'novaforge_importer.py',
         'render_setup.py',
+        'lod_generator.py',
+        'collision_generator.py',
+        'animation_system.py',
     ]
     
     all_valid = True
@@ -781,6 +790,175 @@ def test_enhanced_textures():
     return all_valid
 
 
+def test_lod_generator():
+    """Test that lod_generator.py has proper structure and constants"""
+    print("\nTesting LOD generator module...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    lg_path = os.path.join(addon_path, 'lod_generator.py')
+
+    if not os.path.exists(lg_path):
+        print("✗ lod_generator.py not found")
+        return False
+
+    valid, error = test_python_syntax(lg_path)
+    if not valid:
+        print(f"✗ lod_generator.py has syntax error: {error}")
+        return False
+    print("✓ lod_generator.py has valid syntax")
+
+    with open(lg_path, 'r') as f:
+        content = f.read()
+
+    checks = {
+        'LOD_LEVELS': 'LOD levels dictionary',
+        'LOD_DISTANCES': 'LOD distances per ship class',
+        'def generate_lods(': 'generate_lods function',
+        'def get_lod_distances(': 'get_lod_distances function',
+        'def apply_decimate(': 'apply_decimate function',
+        '"lod_level"': 'lod_level custom property',
+        '"lod_ratio"': 'lod_ratio custom property',
+        '"lod_distance"': 'lod_distance custom property',
+        'def register()': 'register function',
+        'def unregister()': 'unregister function',
+    }
+
+    all_valid = True
+    for pattern, description in checks.items():
+        if pattern in content:
+            print(f"✓ {description} found")
+        else:
+            print(f"✗ {description} not found")
+            all_valid = False
+
+    # Check that LOD_DISTANCES has entries for all ship classes
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("lod_generator", lg_path)
+    lg = importlib.util.module_from_spec(spec)
+
+    # Patch bpy import for non-Blender environment
+    import types
+    bpy_mock = types.ModuleType('bpy')
+    sys.modules['bpy'] = bpy_mock
+    try:
+        spec.loader.exec_module(lg)
+    finally:
+        del sys.modules['bpy']
+
+    sg_path = os.path.join(addon_path, 'ship_generator.py')
+    with open(sg_path, 'r') as f:
+        sg_content = f.read()
+
+    tree = ast.parse(sg_content)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == 'SHIP_CONFIGS':
+                    if isinstance(node.value, ast.Dict):
+                        for k in node.value.keys:
+                            if isinstance(k, ast.Constant):
+                                cls = k.value
+                                if cls in lg.LOD_DISTANCES:
+                                    print(f"✓ LOD_DISTANCES has entry for {cls}")
+                                else:
+                                    print(f"✗ LOD_DISTANCES missing entry for {cls}")
+                                    all_valid = False
+
+    return all_valid
+
+
+def test_collision_generator():
+    """Test that collision_generator.py has proper structure and functions"""
+    print("\nTesting collision generator module...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    cg_path = os.path.join(addon_path, 'collision_generator.py')
+
+    if not os.path.exists(cg_path):
+        print("✗ collision_generator.py not found")
+        return False
+
+    valid, error = test_python_syntax(cg_path)
+    if not valid:
+        print(f"✗ collision_generator.py has syntax error: {error}")
+        return False
+    print("✓ collision_generator.py has valid syntax")
+
+    with open(cg_path, 'r') as f:
+        content = f.read()
+
+    checks = {
+        'COLLISION_TYPES': 'collision types dictionary',
+        'DEFAULT_COLLISION_TYPE': 'default collision type per ship class',
+        'def generate_collision_mesh(': 'generate_collision_mesh function',
+        'def generate_box_collision(': 'generate_box_collision function',
+        'def generate_convex_hull_collision(': 'generate_convex_hull_collision function',
+        'def get_collision_type(': 'get_collision_type function',
+        '"collision_type"': 'collision_type custom property',
+        '"collision_source"': 'collision_source custom property',
+        '"is_collision_mesh"': 'is_collision_mesh custom property',
+        'def register()': 'register function',
+        'def unregister()': 'unregister function',
+    }
+
+    all_valid = True
+    for pattern, description in checks.items():
+        if pattern in content:
+            print(f"✓ {description} found")
+        else:
+            print(f"✗ {description} not found")
+            all_valid = False
+
+    return all_valid
+
+
+def test_animation_system():
+    """Test that animation_system.py has proper structure and functions"""
+    print("\nTesting animation system module...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    as_path = os.path.join(addon_path, 'animation_system.py')
+
+    if not os.path.exists(as_path):
+        print("✗ animation_system.py not found")
+        return False
+
+    valid, error = test_python_syntax(as_path)
+    if not valid:
+        print(f"✗ animation_system.py has syntax error: {error}")
+        return False
+    print("✓ animation_system.py has valid syntax")
+
+    with open(as_path, 'r') as f:
+        content = f.read()
+
+    checks = {
+        'FRAME_RATE': 'frame rate constant',
+        'ANIMATION_PRESETS': 'animation presets dictionary',
+        'def setup_ship_animations(': 'setup_ship_animations function',
+        'def create_turret_animation(': 'create_turret_animation function',
+        'def create_bay_door_animation(': 'create_bay_door_animation function',
+        'def create_landing_gear_animation(': 'create_landing_gear_animation function',
+        'def create_radar_spin_animation(': 'create_radar_spin_animation function',
+        'TURRET_ROTATE': 'turret rotate preset',
+        'BAY_DOOR_OPEN': 'bay door open preset',
+        'LANDING_GEAR_EXTEND': 'landing gear preset',
+        'RADAR_SPIN': 'radar spin preset',
+        'def register()': 'register function',
+        'def unregister()': 'unregister function',
+    }
+
+    all_valid = True
+    for pattern, description in checks.items():
+        if pattern in content:
+            print(f"✓ {description} found")
+        else:
+            print(f"✗ {description} not found")
+            all_valid = False
+
+    return all_valid
+
+
 def run_tests():
     """Run all validation tests"""
     print("=" * 60)
@@ -810,6 +988,9 @@ def run_tests():
         ("Faction Details", test_faction_details),
         ("Render Setup", test_render_setup),
         ("Enhanced Textures", test_enhanced_textures),
+        ("LOD Generator", test_lod_generator),
+        ("Collision Generator", test_collision_generator),
+        ("Animation System", test_animation_system),
     ]
     
     results = []
