@@ -248,6 +248,297 @@ def apply_nms_style(hull, scale):
     cast_mod.cast_type = 'SPHERE'
 
 
+# ---------------------------------------------------------------------------
+# Faction-specific detail generators for NovaForge
+# ---------------------------------------------------------------------------
+
+def generate_launcher_hardpoints(count=2, scale=1.0, symmetry=True, naming_prefix=''):
+    """Generate missile/torpedo launcher bay visual indicators.
+
+    Launchers are box-shaped bays recessed into the hull, distinct from
+    turret cylinders.  Placed along the dorsal-forward hull area.
+
+    Args:
+        count: Number of launcher hardpoints
+        scale: Ship scale factor
+        symmetry: Use symmetrical placement
+        naming_prefix: Project naming prefix
+
+    Returns:
+        List of launcher hardpoint objects.
+    """
+    launchers = []
+    launcher_size = scale * 0.08
+
+    positions = []
+    if symmetry and count % 2 == 0:
+        for i in range(count // 2):
+            y_pos = scale * 0.2 + (i * scale * 0.18)
+            x_offset = scale * 0.15 + (i * scale * 0.08)
+            positions.append((x_offset, y_pos, scale * 0.08))
+            positions.append((-x_offset, y_pos, scale * 0.08))
+    else:
+        for i in range(count):
+            y_pos = scale * 0.15 + (i * scale * 0.18)
+            x_pos = (i - count / 2) * scale * 0.15
+            positions.append((x_pos, y_pos, scale * 0.08))
+
+    for i, pos in enumerate(positions):
+        bpy.ops.mesh.primitive_cube_add(size=launcher_size, location=pos)
+        launcher = bpy.context.active_object
+        launcher.name = _prefixed_name(naming_prefix, f"Launcher_{i+1}")
+        launcher.scale = (0.6, 1.4, 0.5)
+        bpy.ops.object.transform_apply(scale=True)
+
+        # Recessed bay opening (smaller cube subtracted visually)
+        bay_pos = (pos[0], pos[1] + launcher_size * 0.4, pos[2])
+        bpy.ops.mesh.primitive_cube_add(
+            size=launcher_size * 0.5,
+            location=bay_pos,
+        )
+        bay = bpy.context.active_object
+        bay.name = _prefixed_name(naming_prefix, f"Launcher_Bay_{i+1}")
+        bay.parent = launcher
+
+        launcher["hardpoint_type"] = "launcher"
+        launcher["launcher_index"] = i + 1
+        launchers.append(launcher)
+
+    return launchers
+
+
+def generate_drone_bays(count=1, scale=1.0, naming_prefix=''):
+    """Generate drone bay visual indicators on the ventral hull.
+
+    Drone bays are flat, wide openings on the underside of the ship.
+
+    Args:
+        count: Number of drone bays
+        scale: Ship scale factor
+        naming_prefix: Project naming prefix
+
+    Returns:
+        List of drone bay objects.
+    """
+    bays = []
+    bay_size = scale * 0.12
+
+    for i in range(count):
+        y_pos = -scale * 0.1 + (i * scale * 0.15)
+        pos = (0, y_pos, -scale * 0.12)
+
+        bpy.ops.mesh.primitive_cube_add(size=bay_size, location=pos)
+        bay = bpy.context.active_object
+        bay.name = _prefixed_name(naming_prefix, f"Drone_Bay_{i+1}")
+        bay.scale = (1.8, 1.2, 0.3)
+        bpy.ops.object.transform_apply(scale=True)
+
+        # Bay door lines (two thin cubes)
+        for side in (-1, 1):
+            door_pos = (pos[0] + side * bay_size * 0.5, pos[1], pos[2])
+            bpy.ops.mesh.primitive_cube_add(
+                size=bay_size * 0.1,
+                location=door_pos,
+            )
+            door = bpy.context.active_object
+            door.name = _prefixed_name(
+                naming_prefix, f"Drone_Bay_{i+1}_Door_{'L' if side < 0 else 'R'}")
+            door.scale = (0.2, 1.0, 0.5)
+            bpy.ops.object.transform_apply(scale=True)
+            door.parent = bay
+
+        bay["hardpoint_type"] = "drone_bay"
+        bay["drone_bay_index"] = i + 1
+        bays.append(bay)
+
+    return bays
+
+
+def add_faction_details(hull, scale, style, seed, naming_prefix=''):
+    """Add faction-specific surface details to a hull.
+
+    Dispatches to per-faction helpers that add distinctive geometry
+    matching NovaForge's design language for each race.
+
+    Args:
+        hull: The hull mesh object.
+        scale: Ship scale factor.
+        style: Faction style string (SOLARI, VEYREN, AURELIAN, KELDARI).
+        seed: Random seed.
+        naming_prefix: Project naming prefix.
+
+    Returns:
+        List of created detail objects.
+    """
+    rng = random.Random(seed + 200)
+    details = []
+
+    if style == 'SOLARI':
+        details.extend(_add_solari_spires(hull, scale, rng, naming_prefix))
+    elif style == 'VEYREN':
+        details.extend(_add_veyren_panels(hull, scale, rng, naming_prefix))
+    elif style == 'AURELIAN':
+        details.extend(_add_aurelian_curves(hull, scale, rng, naming_prefix))
+    elif style == 'KELDARI':
+        details.extend(_add_keldari_framework(hull, scale, rng, naming_prefix))
+
+    return details
+
+
+def _add_solari_spires(hull, scale, rng, naming_prefix):
+    """Add Solari cathedral spires and golden trim."""
+    details = []
+    spire_count = max(2, int(scale * 0.3))
+
+    for i in range(spire_count):
+        y_pos = rng.uniform(-scale * 0.3, scale * 0.4)
+        x_pos = rng.uniform(-scale * 0.08, scale * 0.08)
+        height = scale * rng.uniform(0.12, 0.22)
+
+        bpy.ops.mesh.primitive_cone_add(
+            radius1=scale * 0.02,
+            radius2=0,
+            depth=height,
+            location=(x_pos, y_pos, scale * 0.15 + height * 0.5),
+        )
+        spire = bpy.context.active_object
+        spire.name = _prefixed_name(naming_prefix, f"Solari_Spire_{i+1}")
+        spire.parent = hull
+
+        # Gold material
+        mat = bpy.data.materials.new(name=f"Solari_Gold_{i}")
+        mat.use_nodes = True
+        bsdf = mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf:
+            bsdf.inputs['Base Color'].default_value = (0.8, 0.65, 0.2, 1.0)
+            bsdf.inputs['Metallic'].default_value = 0.95
+            bsdf.inputs['Roughness'].default_value = 0.2
+        spire.data.materials.append(mat)
+        details.append(spire)
+
+    return details
+
+
+def _add_veyren_panels(hull, scale, rng, naming_prefix):
+    """Add Veyren blocky armor panels and antenna arrays."""
+    details = []
+    panel_count = max(3, int(scale * 0.4))
+
+    for i in range(panel_count):
+        y_pos = rng.uniform(-scale * 0.5, scale * 0.4)
+        side = rng.choice([-1, 1])
+        x_pos = side * scale * rng.uniform(0.18, 0.28)
+
+        bpy.ops.mesh.primitive_cube_add(
+            size=scale * 0.06,
+            location=(x_pos, y_pos, scale * rng.uniform(0.05, 0.14)),
+        )
+        panel = bpy.context.active_object
+        panel.name = _prefixed_name(naming_prefix, f"Veyren_Panel_{i+1}")
+        panel.scale = (1.0, rng.uniform(1.2, 2.0), 0.4)
+        bpy.ops.object.transform_apply(scale=True)
+        panel.parent = hull
+
+        mat = bpy.data.materials.new(name=f"Veyren_Steel_{i}")
+        mat.use_nodes = True
+        bsdf = mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf:
+            bsdf.inputs['Base Color'].default_value = (0.35, 0.45, 0.55, 1.0)
+            bsdf.inputs['Metallic'].default_value = 0.85
+            bsdf.inputs['Roughness'].default_value = 0.35
+        panel.data.materials.append(mat)
+        details.append(panel)
+
+    return details
+
+
+def _add_aurelian_curves(hull, scale, rng, naming_prefix):
+    """Add Aurelian organic curved pods and drone recesses."""
+    details = []
+    pod_count = max(2, int(scale * 0.25))
+
+    for i in range(pod_count):
+        y_pos = rng.uniform(-scale * 0.3, scale * 0.3)
+        side = rng.choice([-1, 1])
+        x_pos = side * scale * rng.uniform(0.2, 0.3)
+
+        bpy.ops.mesh.primitive_uv_sphere_add(
+            radius=scale * 0.04,
+            location=(x_pos, y_pos, 0),
+        )
+        pod = bpy.context.active_object
+        pod.name = _prefixed_name(naming_prefix, f"Aurelian_Pod_{i+1}")
+        pod.scale = (0.8, 1.5, 0.6)
+        bpy.ops.object.transform_apply(scale=True)
+        bpy.ops.object.shade_smooth()
+        pod.parent = hull
+
+        mat = bpy.data.materials.new(name=f"Aurelian_Organic_{i}")
+        mat.use_nodes = True
+        bsdf = mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf:
+            bsdf.inputs['Base Color'].default_value = (0.2, 0.45, 0.35, 1.0)
+            bsdf.inputs['Metallic'].default_value = 0.6
+            bsdf.inputs['Roughness'].default_value = 0.35
+        pod.data.materials.append(mat)
+        details.append(pod)
+
+    return details
+
+
+def _add_keldari_framework(hull, scale, rng, naming_prefix):
+    """Add Keldari exposed structural framework and asymmetric plating."""
+    details = []
+    strut_count = max(3, int(scale * 0.35))
+
+    for i in range(strut_count):
+        y_pos = rng.uniform(-scale * 0.5, scale * 0.4)
+        side = rng.choice([-1, 1])
+        x_pos = side * scale * rng.uniform(0.15, 0.3)
+        z_pos = rng.uniform(-scale * 0.05, scale * 0.12)
+
+        bpy.ops.mesh.primitive_cylinder_add(
+            radius=scale * 0.01,
+            depth=scale * rng.uniform(0.08, 0.18),
+            location=(x_pos, y_pos, z_pos),
+        )
+        strut = bpy.context.active_object
+        strut.name = _prefixed_name(naming_prefix, f"Keldari_Strut_{i+1}")
+        angle = rng.uniform(-0.4, 0.4)
+        strut.rotation_euler = (angle, rng.uniform(-0.3, 0.3), 0)
+        strut.parent = hull
+
+        mat = bpy.data.materials.new(name=f"Keldari_Rust_{i}")
+        mat.use_nodes = True
+        bsdf = mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf:
+            bsdf.inputs['Base Color'].default_value = (0.45, 0.3, 0.2, 1.0)
+            bsdf.inputs['Metallic'].default_value = 0.7
+            bsdf.inputs['Roughness'].default_value = 0.65
+        strut.data.materials.append(mat)
+        details.append(strut)
+
+    # Add asymmetric armor plates
+    plate_count = max(2, int(scale * 0.2))
+    for i in range(plate_count):
+        y_pos = rng.uniform(-scale * 0.4, scale * 0.3)
+        x_pos = rng.uniform(-scale * 0.25, scale * 0.25)
+
+        bpy.ops.mesh.primitive_cube_add(
+            size=scale * 0.05,
+            location=(x_pos, y_pos, scale * rng.uniform(0.08, 0.15)),
+        )
+        plate = bpy.context.active_object
+        plate.name = _prefixed_name(naming_prefix, f"Keldari_Plate_{i+1}")
+        plate.scale = (rng.uniform(0.8, 1.5), rng.uniform(0.8, 1.5), 0.3)
+        plate.rotation_euler = (0, 0, rng.uniform(-0.2, 0.2))
+        bpy.ops.object.transform_apply(scale=True)
+        plate.parent = hull
+        details.append(plate)
+
+    return details
+
+
 # Base magnitude for seed-driven hull vertex noise (fraction of scale)
 _VERTEX_NOISE_BASE_MAGNITUDE = 0.012
 

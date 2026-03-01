@@ -32,6 +32,8 @@ from . import station_generator
 from . import asteroid_generator
 from . import texture_generator
 from . import brick_system
+from . import novaforge_importer
+from . import render_setup
 
 
 class SpaceshipGeneratorProperties(bpy.types.PropertyGroup):
@@ -237,6 +239,29 @@ class SpaceshipGeneratorProperties(bpy.types.PropertyGroup):
         max=1.0
     )
 
+    launcher_hardpoints: IntProperty(
+        name="Launcher Hardpoints",
+        description="Number of missile/torpedo launcher hardpoints",
+        default=0,
+        min=0,
+        max=10
+    )
+
+    drone_bays: IntProperty(
+        name="Drone Bays",
+        description="Number of drone bays",
+        default=0,
+        min=0,
+        max=5
+    )
+
+    novaforge_data_dir: StringProperty(
+        name="NovaForge Data Dir",
+        description="Path to a NovaForge data/ships directory",
+        subtype='DIR_PATH',
+        default=""
+    )
+
     ship_dna_export_path: StringProperty(
         name="Ship DNA Path",
         description="File path to export Ship DNA JSON for reproducible ships",
@@ -266,6 +291,8 @@ class SPACESHIP_OT_generate(bpy.types.Operator):
             naming_prefix=props.naming_prefix,
             turret_hardpoints=props.turret_hardpoints,
             hull_taper=props.hull_taper,
+            launcher_hardpoints=props.launcher_hardpoints,
+            drone_bays=props.drone_bays,
         )
 
         # Apply procedural textures if requested
@@ -425,6 +452,87 @@ class SPACESHIP_OT_export_ship_dna(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class SPACESHIP_OT_import_novaforge(bpy.types.Operator):
+    """Import a single NovaForge ship JSON and generate it"""
+    bl_idname = "mesh.import_novaforge_ship"
+    bl_label = "Generate from NovaForge JSON"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        import os
+        props = context.scene.spaceship_props
+        json_path = bpy.path.abspath(props.eveoffline_json_path)
+
+        if not json_path or not json_path.endswith('.json'):
+            self.report({'ERROR'}, "Select a valid NovaForge ship JSON file")
+            return {'CANCELLED'}
+        if not os.path.isfile(json_path):
+            self.report({'ERROR'}, f"File not found: {json_path}")
+            return {'CANCELLED'}
+
+        try:
+            ships = novaforge_importer.load_ships_from_file(json_path)
+        except Exception as e:
+            self.report({'ERROR'}, f"Failed to load JSON: {e}")
+            return {'CANCELLED'}
+
+        count = 0
+        for ship_id, ship_def in ships.items():
+            params = novaforge_importer.ship_to_generator_params(ship_def)
+            ship_generator.generate_spaceship(**params)
+            count += 1
+
+        self.report({'INFO'}, f"Generated {count} ships from NovaForge data")
+        return {'FINISHED'}
+
+
+class SPACESHIP_OT_batch_novaforge(bpy.types.Operator):
+    """Batch generate all ships from a NovaForge data directory"""
+    bl_idname = "mesh.batch_novaforge_ships"
+    bl_label = "Batch Generate All Ships"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        import os
+        props = context.scene.spaceship_props
+        data_dir = bpy.path.abspath(props.novaforge_data_dir)
+
+        if not data_dir or not os.path.isdir(data_dir):
+            self.report({'ERROR'}, "Set a valid NovaForge data directory")
+            return {'CANCELLED'}
+
+        ships = novaforge_importer.load_ships_from_directory(data_dir)
+        if not ships:
+            self.report({'WARNING'}, "No ship definitions found")
+            return {'CANCELLED'}
+
+        count = 0
+        for ship_id, ship_def in ships.items():
+            params = novaforge_importer.ship_to_generator_params(ship_def)
+            ship_generator.generate_spaceship(**params)
+            count += 1
+
+        self.report({'INFO'}, f"Batch generated {count} ships from NovaForge data")
+        return {'FINISHED'}
+
+
+class SPACESHIP_OT_catalog_render(bpy.types.Operator):
+    """Set up and render a catalog image of the selected ship"""
+    bl_idname = "mesh.catalog_render"
+    bl_label = "Catalog Render"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        obj = context.active_object
+        if obj is None:
+            self.report({'ERROR'}, "Select a ship object first")
+            return {'CANCELLED'}
+
+        render_setup.setup_catalog_render(obj)
+        self.report({'INFO'}, "Catalog render setup complete – press F12 to render")
+        return {'FINISHED'}
+
+
 class SPACESHIP_PT_main_panel(bpy.types.Panel):
     """Main panel for spaceship generator"""
     bl_label = "Spaceship Generator"
@@ -453,6 +561,8 @@ class SPACESHIP_PT_main_panel(bpy.types.Panel):
         layout.label(text="Naming & Hardpoints:")
         layout.prop(props, "naming_prefix")
         layout.prop(props, "turret_hardpoints")
+        layout.prop(props, "launcher_hardpoints")
+        layout.prop(props, "drone_bays")
 
         layout.separator()
         layout.label(text="Hull Shaping:")
@@ -466,6 +576,13 @@ class SPACESHIP_PT_main_panel(bpy.types.Panel):
         
         layout.separator()
         layout.operator("mesh.generate_spaceship", icon='MESH_CUBE')
+
+        layout.separator()
+        layout.label(text="NovaForge Integration:")
+        layout.prop(props, "novaforge_data_dir")
+        layout.operator("mesh.import_novaforge_ship", icon='IMPORT')
+        layout.operator("mesh.batch_novaforge_ships", icon='FILE_REFRESH')
+        layout.operator("mesh.catalog_render", icon='RENDER_STILL')
 
         layout.separator()
         layout.label(text="EVEOFFLINE / Atlas Integration:")
@@ -502,6 +619,9 @@ classes = (
     SPACESHIP_OT_generate_station,
     SPACESHIP_OT_generate_asteroid_belt,
     SPACESHIP_OT_export_ship_dna,
+    SPACESHIP_OT_import_novaforge,
+    SPACESHIP_OT_batch_novaforge,
+    SPACESHIP_OT_catalog_render,
     SPACESHIP_PT_main_panel,
 )
 
@@ -524,10 +644,14 @@ def register():
     asteroid_generator.register()
     texture_generator.register()
     brick_system.register()
+    novaforge_importer.register()
+    render_setup.register()
 
 
 def unregister():
     # Unregister submodules
+    render_setup.unregister()
+    novaforge_importer.unregister()
     brick_system.unregister()
     texture_generator.unregister()
     asteroid_generator.unregister()

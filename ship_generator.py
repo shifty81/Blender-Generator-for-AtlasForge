@@ -19,6 +19,7 @@ from . import ship_parts
 from . import interior_generator
 from . import module_system
 from . import brick_system
+from . import novaforge_importer
 
 
 # Maximum number of turret hardpoints any ship may have
@@ -202,7 +203,8 @@ def _prefixed_name(prefix, name):
 def generate_spaceship(ship_class='FIGHTER', seed=1, generate_interior=True,
                        module_slots=2, hull_complexity=1.0, symmetry=True,
                        style='MIXED', naming_prefix='', turret_hardpoints=0,
-                       hull_taper=0.85):
+                       hull_taper=0.85, launcher_hardpoints=0, drone_bays=0,
+                       engine_count_override=0, novaforge_scale=None):
     """
     Generate a complete spaceship with all parts using spine-first assembly.
 
@@ -293,8 +295,9 @@ def generate_spaceship(ship_class='FIGHTER', seed=1, generate_interior=True,
     # ------------------------------------------------------------------
     # Stage 4 – Engines (archetype-varied)
     # ------------------------------------------------------------------
+    engine_count = engine_count_override if engine_count_override > 0 else config['engines']
     engines = ship_parts.generate_engines(
-        count=config['engines'],
+        count=engine_count,
         scale=scale,
         symmetry=symmetry,
         style=style,
@@ -342,6 +345,37 @@ def generate_spaceship(ship_class='FIGHTER', seed=1, generate_interior=True,
                 'pos': list(turret.location),
             })
 
+    # Launcher hardpoints
+    if launcher_hardpoints > 0:
+        launchers = ship_parts.generate_launcher_hardpoints(
+            count=launcher_hardpoints,
+            scale=scale,
+            symmetry=symmetry,
+            naming_prefix=naming_prefix
+        )
+        for launcher in launchers:
+            collection.objects.link(launcher)
+            placed_bricks.append({
+                'type': 'HARDPOINT_MOUNT',
+                'pos': list(launcher.location),
+                'subtype': 'launcher',
+            })
+
+    # Drone bays
+    if drone_bays > 0:
+        drone_bay_objs = ship_parts.generate_drone_bays(
+            count=drone_bays,
+            scale=scale,
+            naming_prefix=naming_prefix
+        )
+        for bay in drone_bay_objs:
+            collection.objects.link(bay)
+            placed_bricks.append({
+                'type': 'DOCKING_CLAMP',
+                'pos': list(bay.location),
+                'subtype': 'drone_bay',
+            })
+
     # ------------------------------------------------------------------
     # Stage 6 – Detail modules
     # ------------------------------------------------------------------
@@ -373,6 +407,17 @@ def generate_spaceship(ship_class='FIGHTER', seed=1, generate_interior=True,
             'type': greeble.get('brick_type', 'PANEL'),
             'pos': list(greeble.location),
         })
+
+    # ------------------------------------------------------------------
+    # Stage 6c – Faction-specific details
+    # ------------------------------------------------------------------
+    if style in ('SOLARI', 'VEYREN', 'AURELIAN', 'KELDARI'):
+        faction_details = ship_parts.add_faction_details(
+            hull, scale=scale, style=style, seed=seed,
+            naming_prefix=naming_prefix,
+        )
+        for detail in faction_details:
+            collection.objects.link(detail)
 
     # ------------------------------------------------------------------
     # Stage 7 – Interior (optional)

@@ -139,6 +139,64 @@ def export_obj(filepath):
     )
 
 
+def export_for_novaforge(filepath, scale_factor=None):
+    """Export the active ship as OBJ for the NovaForge asset pipeline.
+
+    Uses NovaForge coordinate conventions (+Z forward, +Y up) and
+    optionally applies the NovaForge scale (1 game unit ≈ 50 m).
+    A companion JSON file with material properties is written alongside
+    the OBJ.
+
+    Args:
+        filepath: Output .obj file path.
+        scale_factor: Optional global scale multiplier.  When *None* the
+            default NovaForge conversion (1 unit = 50 m) is applied,
+            i.e. ``scale_factor = 1.0 / 50.0``.
+    """
+    import bpy
+
+    if scale_factor is None:
+        scale_factor = 1.0 / 50.0
+
+    bpy.ops.wm.obj_export(
+        filepath=filepath,
+        export_selected_objects=True,
+        apply_modifiers=True,
+        export_uv=True,
+        export_normals=True,
+        export_materials=True,
+        forward_axis='Z',
+        up_axis='Y',
+        global_scale=scale_factor,
+    )
+
+    # Write companion material JSON
+    mat_data = {}
+    for obj in bpy.context.selected_objects:
+        if obj.type != 'MESH':
+            continue
+        for slot in obj.material_slots:
+            mat = slot.material
+            if mat is None or mat.name in mat_data:
+                continue
+            entry = {'name': mat.name}
+            if mat.use_nodes:
+                for node in mat.node_tree.nodes:
+                    if node.type == 'BSDF_PRINCIPLED':
+                        entry['base_color'] = list(
+                            node.inputs['Base Color'].default_value)
+                        entry['metallic'] = node.inputs[
+                            'Metallic'].default_value
+                        entry['roughness'] = node.inputs[
+                            'Roughness'].default_value
+                        break
+            mat_data[mat.name] = entry
+
+    json_path = os.path.splitext(filepath)[0] + '_materials.json'
+    with open(json_path, 'w', encoding='utf-8') as fh:
+        json.dump(mat_data, fh, indent=2)
+
+
 def register():
     """Register this module"""
     pass

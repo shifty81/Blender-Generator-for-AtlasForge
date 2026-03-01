@@ -35,6 +35,8 @@ def test_addon_structure():
         'asteroid_generator.py',
         'texture_generator.py',
         'brick_system.py',
+        'novaforge_importer.py',
+        'render_setup.py',
     ]
     
     all_exist = True
@@ -65,6 +67,8 @@ def test_file_syntax():
         'asteroid_generator.py',
         'texture_generator.py',
         'brick_system.py',
+        'novaforge_importer.py',
+        'render_setup.py',
     ]
     
     all_valid = True
@@ -148,6 +152,8 @@ def test_register_functions():
         'asteroid_generator.py',
         'texture_generator.py',
         'brick_system.py',
+        'novaforge_importer.py',
+        'render_setup.py',
     ]
     
     all_valid = True
@@ -586,6 +592,195 @@ def test_module_placement_zones():
     return all_valid
 
 
+def test_novaforge_importer():
+    """Test that novaforge_importer.py has proper structure and functions"""
+    print("\nTesting NovaForge importer...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    nf_path = os.path.join(addon_path, 'novaforge_importer.py')
+
+    if not os.path.exists(nf_path):
+        print("✗ novaforge_importer.py not found")
+        return False
+
+    with open(nf_path, 'r') as f:
+        content = f.read()
+
+    checks = {
+        'RACE_TO_STYLE': 'race-to-style mapping',
+        'CLASS_MAP': 'class mapping dictionary',
+        'NOVAFORGE_SCALES': 'NovaForge scale table',
+        'def load_ships_from_file(': 'load_ships_from_file function',
+        'def load_ships_from_directory(': 'load_ships_from_directory function',
+        'def ship_to_generator_params(': 'ship_to_generator_params function',
+        'def get_all_generator_params(': 'get_all_generator_params function',
+        'def register()': 'register function',
+        'def unregister()': 'unregister function',
+    }
+
+    all_valid = True
+    for pattern, description in checks.items():
+        if pattern in content:
+            print(f"✓ {description} found")
+        else:
+            print(f"✗ {description} not found")
+            all_valid = False
+
+    return all_valid
+
+
+def test_launcher_hardpoints():
+    """Test that ship_parts.py defines generate_launcher_hardpoints"""
+    print("\nTesting launcher hardpoints function...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    sp_path = os.path.join(addon_path, 'ship_parts.py')
+
+    with open(sp_path, 'r') as f:
+        content = f.read()
+
+    checks = {
+        'def generate_launcher_hardpoints(': 'generate_launcher_hardpoints function',
+        '"hardpoint_type"': 'hardpoint_type custom property',
+        '"launcher_index"': 'launcher_index custom property',
+    }
+
+    all_valid = True
+    for pattern, description in checks.items():
+        if pattern in content:
+            print(f"✓ {description} found")
+        else:
+            print(f"✗ {description} not found")
+            all_valid = False
+
+    return all_valid
+
+
+def test_drone_bays():
+    """Test that ship_parts.py defines generate_drone_bays"""
+    print("\nTesting drone bays function...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    sp_path = os.path.join(addon_path, 'ship_parts.py')
+
+    with open(sp_path, 'r') as f:
+        content = f.read()
+
+    checks = {
+        'def generate_drone_bays(': 'generate_drone_bays function',
+        '"drone_bay_index"': 'drone_bay_index custom property',
+    }
+
+    all_valid = True
+    for pattern, description in checks.items():
+        if pattern in content:
+            print(f"✓ {description} found")
+        else:
+            print(f"✗ {description} not found")
+            all_valid = False
+
+    return all_valid
+
+
+def test_faction_details():
+    """Test that ship_parts.py defines add_faction_details and all 4 faction helpers"""
+    print("\nTesting faction detail generators...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    sp_path = os.path.join(addon_path, 'ship_parts.py')
+
+    with open(sp_path, 'r') as f:
+        content = f.read()
+
+    checks = {
+        'def add_faction_details(': 'add_faction_details function',
+        'def _add_solari_spires(': 'Solari spires helper',
+        'def _add_veyren_panels(': 'Veyren panels helper',
+        'def _add_aurelian_curves(': 'Aurelian curves helper',
+        'def _add_keldari_framework(': 'Keldari framework helper',
+    }
+
+    all_valid = True
+    for pattern, description in checks.items():
+        if pattern in content:
+            print(f"✓ {description} found")
+        else:
+            print(f"✗ {description} not found")
+            all_valid = False
+
+    return all_valid
+
+
+def test_render_setup():
+    """Test that render_setup.py has proper structure"""
+    print("\nTesting render setup module...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    rs_path = os.path.join(addon_path, 'render_setup.py')
+
+    if not os.path.exists(rs_path):
+        print("✗ render_setup.py not found")
+        return False
+
+    valid, error = test_python_syntax(rs_path)
+    if not valid:
+        print(f"✗ render_setup.py has syntax error: {error}")
+        return False
+    print("✓ render_setup.py has valid syntax")
+
+    with open(rs_path, 'r') as f:
+        content = f.read()
+
+    checks = {
+        'CATALOG_RESOLUTION': 'catalog resolution constant',
+        'THUMBNAIL_RESOLUTION': 'thumbnail resolution constant',
+        'def setup_catalog_render(': 'setup_catalog_render function',
+        'def setup_thumbnail_render(': 'setup_thumbnail_render function',
+        'def render_to_file(': 'render_to_file function',
+        'def _get_or_create_camera(': 'camera helper',
+        'def _setup_three_point_lighting(': 'three-point lighting helper',
+        'def register()': 'register function',
+        'def unregister()': 'unregister function',
+    }
+
+    all_valid = True
+    for pattern, description in checks.items():
+        if pattern in content:
+            print(f"✓ {description} found")
+        else:
+            print(f"✗ {description} not found")
+            all_valid = False
+
+    return all_valid
+
+
+def test_enhanced_textures():
+    """Test that texture_generator.py defines new material generators"""
+    print("\nTesting enhanced texture functions...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    tg_path = os.path.join(addon_path, 'texture_generator.py')
+
+    with open(tg_path, 'r') as f:
+        content = f.read()
+
+    checks = {
+        'def generate_normal_material(': 'generate_normal_material function',
+        'def generate_glow_material(': 'generate_glow_material function',
+        'def generate_dirt_material(': 'generate_dirt_material function',
+    }
+
+    all_valid = True
+    for pattern, description in checks.items():
+        if pattern in content:
+            print(f"✓ {description} found")
+        else:
+            print(f"✗ {description} not found")
+            all_valid = False
+
+    return all_valid
+
+
 def run_tests():
     """Run all validation tests"""
     print("=" * 60)
@@ -609,6 +804,12 @@ def run_tests():
         ("Greeble Detail Pass", test_greeble_details),
         ("Enhanced Engine Details", test_enhanced_engine_details),
         ("Module Placement Zones", test_module_placement_zones),
+        ("NovaForge Importer", test_novaforge_importer),
+        ("Launcher Hardpoints", test_launcher_hardpoints),
+        ("Drone Bays", test_drone_bays),
+        ("Faction Details", test_faction_details),
+        ("Render Setup", test_render_setup),
+        ("Enhanced Textures", test_enhanced_textures),
     ]
     
     results = []
