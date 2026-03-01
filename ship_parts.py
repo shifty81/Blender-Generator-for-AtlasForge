@@ -255,8 +255,9 @@ def apply_nms_style(hull, scale):
 def generate_launcher_hardpoints(count=2, scale=1.0, symmetry=True, naming_prefix=''):
     """Generate missile/torpedo launcher bay visual indicators.
 
-    Launchers are box-shaped bays recessed into the hull, distinct from
-    turret cylinders.  Placed along the dorsal-forward hull area.
+    Launchers use recessed box geometry for missile bays, placed along the
+    dorsal-forward hull.  This contrasts with turret hardpoints which use
+    cylindrical geometry for beam/projectile weapons.
 
     Args:
         count: Number of launcher hardpoints

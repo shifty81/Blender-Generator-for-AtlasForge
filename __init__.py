@@ -117,9 +117,9 @@ class SpaceshipGeneratorProperties(bpy.types.PropertyGroup):
         default='MIXED'
     )
 
-    eveoffline_json_path: StringProperty(
+    novaforge_json_path: StringProperty(
         name="Ship JSON",
-        description="Path to an EVEOFFLINE ship JSON file to import",
+        description="Path to a NovaForge ship JSON file to import",
         subtype='FILE_PATH',
         default=""
     )
@@ -316,10 +316,10 @@ class SPACESHIP_OT_import_eveoffline(bpy.types.Operator):
 
     def execute(self, context):
         props = context.scene.spaceship_props
-        json_path = bpy.path.abspath(props.eveoffline_json_path)
+        json_path = bpy.path.abspath(props.novaforge_json_path)
 
         if not json_path or not json_path.endswith('.json'):
-            self.report({'ERROR'}, "Select a valid EVEOFFLINE ship JSON file")
+            self.report({'ERROR'}, "Select a valid NovaForge ship JSON file")
             return {'CANCELLED'}
 
         import os
@@ -461,7 +461,7 @@ class SPACESHIP_OT_import_novaforge(bpy.types.Operator):
     def execute(self, context):
         import os
         props = context.scene.spaceship_props
-        json_path = bpy.path.abspath(props.eveoffline_json_path)
+        json_path = bpy.path.abspath(props.novaforge_json_path)
 
         if not json_path or not json_path.endswith('.json'):
             self.report({'ERROR'}, "Select a valid NovaForge ship JSON file")
@@ -586,7 +586,7 @@ class SPACESHIP_PT_main_panel(bpy.types.Panel):
 
         layout.separator()
         layout.label(text="EVEOFFLINE / Atlas Integration:")
-        layout.prop(props, "eveoffline_json_path")
+        layout.prop(props, "novaforge_json_path")
         layout.operator("mesh.import_eveoffline_ships", icon='IMPORT')
         layout.prop(props, "eveoffline_export_path")
         layout.operator("mesh.export_eveoffline_obj", icon='EXPORT')

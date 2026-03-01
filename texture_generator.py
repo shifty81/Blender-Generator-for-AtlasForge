@@ -349,7 +349,7 @@ def generate_normal_material(style='MIXED', seed=0):
 
     Args:
         style: Design style for color palette selection.
-        seed: Random seed for NMS palette variation.
+        seed: Random seed for palette variation.
 
     Returns:
         bpy.types.Material
