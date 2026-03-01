@@ -1,23 +1,20 @@
 # BlenderSpaceshipGenerator
 
-A comprehensive Blender addon for procedurally generating spaceships with modular parts and interiors. Inspired by games like X4 Foundations, Elite Dangerous, and Eve Online.
+A comprehensive Blender addon for procedurally generating spaceships, textures, and catalog renders. This is the **asset pipeline tool** for the [NovaForge](https://github.com/shifty81/NovaForge) PVE space simulator, built on the Atlas Engine.
 
-Built as the ship generator for the [EVEOFFLINE](https://github.com/shifty81/EVEOFFLINE) project — a PVE space simulator powered by the custom Atlas Engine and Atlas UI.
+## NovaForge Asset Pipeline
 
-## EVEOFFLINE / Atlas Integration
+This addon is the primary tool for generating and refining all 3D assets used by NovaForge:
 
-This addon integrates directly with the EVEOFFLINE project:
-
-- **Import ships from EVEOFFLINE JSON** — reads `data/ships/*.json` and generates matching geometry using each ship's faction, class, seed, and hardpoint data.
-- **Export OBJ for Atlas Engine** — one-click export with correct axis orientation for the Atlas rendering pipeline.
-- **Four faction styles** — Solari (elegant), Veyren (angular), Aurelian (organic), Keldari (rugged) map directly to EVEOFFLINE's four factions.
+- **Import ships from NovaForge JSON** — reads `data/ships/*.json` and generates matching geometry using each ship's faction, class, seed, `model_data` (turret_hardpoints, launcher_hardpoints, drone_bays, engine_count, generation_seed).
+- **Batch generate** — process an entire `data/ships/` directory in one click to regenerate all ship meshes.
+- **Faction-specific details** — Solari spires, Veyren armor panels, Aurelian organic pods, Keldari exposed framework struts match NovaForge's four races.
+- **PBR material pipeline** — procedural diffuse, normal (panel lines + rivets), glow/emissive, and dirt/grime materials for full texture baking.
+- **Catalog render setup** — one-click 3/4-view camera, three-point lighting, and transparent PNG output for ship catalog images.
+- **Export OBJ for Atlas Engine** — correct +Z-forward coordinate system, NovaForge scale (1 game unit ≈ 50 m), companion material JSON.
 - **All ship classes** — Frigates through Titans, plus Industrials, Mining Barges, and Exhumers.
-- **Station generation** — procedural space stations matching EVEOFFLINE station types (Industrial, Military, Commercial, Research, Mining) and Upwell structures (Astrahus, Fortizar, Keepstar).
-- **Asteroid belt generation** — procedural asteroid belts with all 16 EVEOFFLINE ore types and 4 belt layouts (Semicircle, Sphere, Cluster, Ring).
-
-**→ [Full EVEOFFLINE Integration Guide](EVEOFFLINE_GUIDE.md)** — start-to-finish instructions for generating and exporting ships into the Atlas engine.
-
-**→ [Engine Integration Reference](ENGINE_INTEGRATION.md)** — data structures, JSON schemas, ECS mappings, and C++ pseudocode for implementing ship systems in the Atlas engine.
+- **Station generation** — procedural space stations matching NovaForge station types (Industrial, Military, Commercial, Research, Mining) and Upwell structures (Astrahus, Fortizar, Keepstar).
+- **Asteroid belt generation** — procedural asteroid belts with all 16 NovaForge ore types and 4 belt layouts (Semicircle, Sphere, Cluster, Ring).
 
 **→ [Feature Specification](features.md)** — complete feature list, design rules, and implementation status.
 
@@ -45,7 +42,9 @@ This addon integrates directly with the EVEOFFLINE project:
   - Cockpit/Bridge appropriate to ship size
   - Multiple engine configurations
   - Wing structures for smaller vessels
-  - Weapon hardpoints
+  - Turret hardpoints (from NovaForge `model_data`)
+  - Launcher hardpoints (missile/torpedo bays)
+  - Drone bays (ventral recesses)
   - Progressive module system for ship expansion
 
 - **Brick Taxonomy & LEGO Logic**:
@@ -99,11 +98,11 @@ This addon integrates directly with the EVEOFFLINE project:
   - Elite Dangerous (Sleek, aerodynamic)
   - Eve Online (Organic, flowing)
   - Mixed (Combination of all styles)
-  - **EVEOFFLINE Factions**:
-    - Solari (Golden, elegant — armor tanking)
-    - Veyren (Angular, utilitarian — shield tanking)
-    - Aurelian (Sleek, organic — drones)
-    - Keldari (Rugged, industrial — missiles)
+  - **NovaForge Factions**:
+    - Solari (Golden cathedral spires — armor tanking)
+    - Veyren (Steel-blue blocky panels — shield tanking)
+    - Aurelian (Green organic curves — drones)
+    - Keldari (Rust-brown asymmetric framework — projectiles)
 
 - **Station Generation**:
   - NPC station types: Industrial, Military, Commercial, Research, Mining
@@ -112,10 +111,28 @@ This addon integrates directly with the EVEOFFLINE project:
   - Docking bays and hangars
 
 - **Asteroid Belt Generation**:
-  - 16 ore types from EVEOFFLINE (Dustite through Nexorite)
+  - 16 ore types from NovaForge (Dustite through Nexorite)
   - 4 belt layouts: Semicircle, Sphere, Cluster, Ring
   - Procedural deformation for natural rocky shapes
   - PBR materials matching ore visual data
+
+- **PBR Material Pipeline**:
+  - Procedural hull materials with metallic/roughness workflow
+  - Normal map generation via Voronoi panel lines and noise rivets
+  - Glow/emissive materials for engines and running lights
+  - Dirt/grime overlay materials with adjustable intensity
+  - Faction-specific color palettes (Solari gold, Veyren steel, Aurelian green, Keldari rust)
+
+- **Catalog Render Pipeline**:
+  - One-click 3/4-view camera setup
+  - Three-point lighting (key, fill, rim)
+  - Transparent background PNG output
+  - Thumbnail render mode (512×512)
+
+- **NovaForge Export**:
+  - OBJ export with +Z-forward, +Y-up coordinate system
+  - Scale conversion (1 game unit = 50 m)
+  - Companion material JSON with PBR properties
 
 ## Installation
 
@@ -126,18 +143,29 @@ This addon integrates directly with the EVEOFFLINE project:
 
 ## Usage
 
+### Quick Generate
+
 1. Open Blender and go to the 3D Viewport
 2. Open the sidebar (press N if not visible)
 3. Navigate to the "Spaceship" tab
 4. Configure your ship:
-   - Select ship class (Shuttle to Capital)
-   - Choose design style
+   - Select ship class (Shuttle to Titan)
+   - Choose design style (or a NovaForge faction)
    - Set random seed for variation
+   - Set turret, launcher, and drone bay counts
    - Enable/disable interior generation
    - Adjust module slots
    - Set hull complexity
    - Toggle symmetry
 5. Click "Generate Spaceship"
+
+### NovaForge Pipeline
+
+1. In the **NovaForge Integration** section, set the data directory to your NovaForge `data/ships/` folder
+2. Click **"Generate from NovaForge JSON"** to import a single JSON file, or **"Batch Generate All Ships"** to process the entire directory
+3. Each ship is generated using its `model_data` (seed, turrets, launchers, drones, engines) and race-to-faction style mapping
+4. Click **"Setup Catalog Render"** to position the camera and lights for a catalog image
+5. Use **File → Export → Export for NovaForge (.obj)** to export with the correct coordinate system and scale
 
 ## Ship Classes
 

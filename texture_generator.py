@@ -341,6 +341,189 @@ def apply_textures_to_ship(ship_object, style='MIXED', seed=0,
         _assign(child)
 
 
+def generate_normal_material(style='MIXED', seed=0):
+    """Generate a material with procedural normal map detail.
+
+    Creates hull panel lines and rivet patterns via bump nodes that
+    produce convincing surface detail without modifying geometry.
+
+    Args:
+        style: Design style for color palette selection.
+        seed: Random seed for palette variation.
+
+    Returns:
+        bpy.types.Material
+    """
+    palette = get_palette(style, seed)
+
+    mat = bpy.data.materials.new(name=f"Hull_Normal_{style}")
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    output = nodes.new(type='ShaderNodeOutputMaterial')
+    output.location = (800, 0)
+
+    principled = nodes.new(type='ShaderNodeBsdfPrincipled')
+    principled.location = (400, 0)
+    principled.inputs['Base Color'].default_value = palette['primary']
+    principled.inputs['Metallic'].default_value = 0.7
+    principled.inputs['Roughness'].default_value = 0.4
+    links.new(principled.outputs['BSDF'], output.inputs['Surface'])
+
+    # Texture coordinates
+    tex_coord = nodes.new(type='ShaderNodeTexCoord')
+    tex_coord.location = (-800, 0)
+
+    # Panel line pattern (Voronoi)
+    voronoi = nodes.new(type='ShaderNodeTexVoronoi')
+    voronoi.location = (-400, 200)
+    voronoi.inputs['Scale'].default_value = 12.0
+    links.new(tex_coord.outputs['Object'], voronoi.inputs['Vector'])
+
+    # Rivet pattern (noise, high frequency)
+    noise = nodes.new(type='ShaderNodeTexNoise')
+    noise.location = (-400, -100)
+    noise.inputs['Scale'].default_value = 40.0
+    noise.inputs['Detail'].default_value = 4.0
+    links.new(tex_coord.outputs['Object'], noise.inputs['Vector'])
+
+    # Combine via math for bump strength
+    combine = nodes.new(type='ShaderNodeMath')
+    combine.location = (-100, 100)
+    combine.operation = 'ADD'
+    links.new(voronoi.outputs['Distance'], combine.inputs[0])
+    links.new(noise.outputs['Fac'], combine.inputs[1])
+
+    # Bump node for normal perturbation
+    bump = nodes.new(type='ShaderNodeBump')
+    bump.location = (200, -150)
+    bump.inputs['Strength'].default_value = 0.3
+    bump.inputs['Distance'].default_value = 0.02
+    links.new(combine.outputs['Value'], bump.inputs['Height'])
+    links.new(bump.outputs['Normal'], principled.inputs['Normal'])
+
+    return mat
+
+
+def generate_glow_material(style='MIXED', seed=0):
+    """Generate a glow/emissive material for engine exhausts and running lights.
+
+    Args:
+        style: Design style.
+        seed: Random seed.
+
+    Returns:
+        bpy.types.Material
+    """
+    palette = get_palette(style, seed)
+
+    mat = bpy.data.materials.new(name=f"Glow_{style}")
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    output = nodes.new(type='ShaderNodeOutputMaterial')
+    output.location = (400, 0)
+
+    emission = nodes.new(type='ShaderNodeEmission')
+    emission.location = (200, 0)
+    emission.inputs['Color'].default_value = palette['accent']
+    emission.inputs['Strength'].default_value = 8.0
+    links.new(emission.outputs['Emission'], output.inputs['Surface'])
+
+    return mat
+
+
+def generate_dirt_material(style='MIXED', seed=0, intensity=0.5):
+    """Generate a dirt/grime overlay material.
+
+    Uses procedural noise to simulate accumulated dirt, oil stains, and
+    environmental wear typical of space vessels.
+
+    Args:
+        style: Design style.
+        seed: Random seed.
+        intensity: Dirt intensity (0.0 = clean, 1.0 = heavy grime).
+
+    Returns:
+        bpy.types.Material
+    """
+    palette = get_palette(style, seed)
+    intensity = max(0.0, min(1.0, intensity))
+
+    mat = bpy.data.materials.new(name=f"Dirt_{style}")
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    output = nodes.new(type='ShaderNodeOutputMaterial')
+    output.location = (800, 0)
+
+    principled = nodes.new(type='ShaderNodeBsdfPrincipled')
+    principled.location = (400, 0)
+    links.new(principled.outputs['BSDF'], output.inputs['Surface'])
+
+    # Dirt color (darker version of primary)
+    dirt_color = tuple(c * 0.4 for c in palette['primary'][:3]) + (1.0,)
+    clean_color = palette['primary']
+
+    tex_coord = nodes.new(type='ShaderNodeTexCoord')
+    tex_coord.location = (-600, 0)
+
+    # Large-scale grime pattern
+    noise1 = nodes.new(type='ShaderNodeTexNoise')
+    noise1.location = (-300, 100)
+    noise1.inputs['Scale'].default_value = 3.0
+    noise1.inputs['Detail'].default_value = 10.0
+    noise1.inputs['Roughness'].default_value = 0.7
+    links.new(tex_coord.outputs['Object'], noise1.inputs['Vector'])
+
+    # Small-scale streaks
+    noise2 = nodes.new(type='ShaderNodeTexNoise')
+    noise2.location = (-300, -100)
+    noise2.inputs['Scale'].default_value = 8.0
+    noise2.inputs['Detail'].default_value = 6.0
+    links.new(tex_coord.outputs['Object'], noise2.inputs['Vector'])
+
+    # Combine dirt patterns
+    mix_noise = nodes.new(type='ShaderNodeMath')
+    mix_noise.location = (-50, 0)
+    mix_noise.operation = 'MULTIPLY'
+    links.new(noise1.outputs['Fac'], mix_noise.inputs[0])
+    links.new(noise2.outputs['Fac'], mix_noise.inputs[1])
+
+    # Color ramp to control dirt threshold
+    ramp = nodes.new(type='ShaderNodeValToRGB')
+    ramp.location = (100, 0)
+    ramp.color_ramp.elements[0].position = 1.0 - intensity
+    links.new(mix_noise.outputs['Value'], ramp.inputs['Fac'])
+
+    # Mix clean and dirty colors
+    color_mix = nodes.new(type='ShaderNodeMixRGB')
+    color_mix.location = (250, 100)
+    color_mix.inputs['Color1'].default_value = clean_color
+    color_mix.inputs['Color2'].default_value = dirt_color
+    links.new(ramp.outputs['Color'], color_mix.inputs['Fac'])
+    links.new(color_mix.outputs['Color'], principled.inputs['Base Color'])
+
+    # Dirty areas are rougher
+    rough_mix = nodes.new(type='ShaderNodeMath')
+    rough_mix.location = (250, -100)
+    rough_mix.operation = 'MULTIPLY_ADD'
+    rough_mix.inputs[1].default_value = 0.4
+    rough_mix.inputs[2].default_value = 0.4
+    links.new(ramp.outputs['Color'], rough_mix.inputs[0])
+    links.new(rough_mix.outputs['Value'], principled.inputs['Roughness'])
+
+    principled.inputs['Metallic'].default_value = 0.5
+
+    return mat
+
+
 def register():
     """Register this module"""
     pass
