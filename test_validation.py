@@ -1144,7 +1144,7 @@ def test_power_system():
 
     # Edge case: no reactor — systems should disable when cap drains
     no_reactor_dna = {
-        'class': 'FIGHTER',
+        'class': 'FRIGATE',
         'bricks': [
             {'type': 'STRUCTURAL_SPINE', 'pos': [0, 0, 0]},
             {'type': 'SHIELD_EMITTER', 'pos': [1, 0, 0]},
@@ -1264,6 +1264,95 @@ def test_build_validator():
     return all_valid
 
 
+def test_connecting_geometry():
+    """Test that ship_parts.py defines connecting geometry helpers"""
+    print("\nTesting connecting geometry functions...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    sp_path = os.path.join(addon_path, 'ship_parts.py')
+
+    with open(sp_path, 'r') as f:
+        content = f.read()
+
+    checks = {
+        'def generate_cockpit_neck(': 'cockpit neck fairing function',
+        'def generate_engine_pylons(': 'engine pylon function',
+        'def generate_wing_roots(': 'wing root fairing function',
+        'def generate_weapon_pylons(': 'weapon pylon function',
+    }
+
+    all_valid = True
+    for pattern, description in checks.items():
+        if pattern in content:
+            print(f"✓ {description} found")
+        else:
+            print(f"✗ {description} not found")
+            all_valid = False
+
+    return all_valid
+
+
+def test_batch_generate_operator():
+    """Test that __init__.py defines the batch generate all operator"""
+    print("\nTesting batch generate operator...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    init_path = os.path.join(addon_path, '__init__.py')
+
+    with open(init_path, 'r') as f:
+        content = f.read()
+
+    checks = {
+        'class SPACESHIP_OT_batch_generate': 'batch generate operator class',
+        "bl_idname = \"mesh.batch_generate_all\"": 'batch generate bl_idname',
+        'batch_output_path': 'batch output path property',
+        'SPACESHIP_OT_batch_generate,': 'operator registered in classes tuple',
+        'class SPACESHIP_OT_novaforge_pipeline': 'NovaForge pipeline operator class',
+        "bl_idname = \"mesh.novaforge_pipeline_export\"": 'NovaForge pipeline bl_idname',
+        'SPACESHIP_OT_novaforge_pipeline,': 'pipeline operator registered in classes',
+    }
+
+    all_valid = True
+    for pattern, description in checks.items():
+        if pattern in content:
+            print(f"✓ {description} found")
+        else:
+            print(f"✗ {description} not found")
+            all_valid = False
+
+    return all_valid
+
+
+def test_emission_color_compat():
+    """Test that texture_generator.py handles both Emission and Emission Color"""
+    print("\nTesting emission color compatibility...")
+
+    addon_path = os.path.dirname(os.path.abspath(__file__))
+    tg_path = os.path.join(addon_path, 'texture_generator.py')
+
+    with open(tg_path, 'r') as f:
+        content = f.read()
+
+    # Should NOT have a bare 'Emission Color' key access without a fallback
+    has_compat = "'Emission Color' if 'Emission Color' in principled.inputs else 'Emission'" in content
+    no_bare_access = "principled.inputs['Emission Color'].default_value" not in content
+
+    all_valid = True
+    if has_compat:
+        print("✓ Emission Color / Emission compatibility check found")
+    else:
+        print("✗ Missing compatibility check for Emission Color / Emission")
+        all_valid = False
+
+    if no_bare_access:
+        print("✓ No bare 'Emission Color' key access")
+    else:
+        print("✗ Bare 'Emission Color' key access still present (will fail on Blender 3.x)")
+        all_valid = False
+
+    return all_valid
+
+
 def run_tests():
     """Run all validation tests"""
     print("=" * 60)
@@ -1299,6 +1388,9 @@ def run_tests():
         ("Damage System", test_damage_system),
         ("Power System", test_power_system),
         ("Build Validator", test_build_validator),
+        ("Connecting Geometry", test_connecting_geometry),
+        ("Batch Generate Operator", test_batch_generate_operator),
+        ("Emission Color Compat", test_emission_color_compat),
     ]
     
     results = []

@@ -1,5 +1,5 @@
 """
-Ship parts generation module
+Ship parts generation module for the NovaForge content pipeline.
 Generates individual ship components (hull, cockpit, engines, wings, weapons, turrets)
 
 Engine generation supports three archetypes (MAIN_THRUST, MANEUVERING,
@@ -21,15 +21,12 @@ from . import brick_system
 MAX_TURRET_HARDPOINTS = 10
 
 # ---------------------------------------------------------------------------
-# Per-class hull shape profiles
+# Per-class hull shape profiles (NovaForge classes only)
 # ---------------------------------------------------------------------------
 # Each profile defines (width, length, height) multipliers relative to the
 # ship scale so every class gets a distinctive silhouette.
 
 HULL_PROFILES = {
-    'SHUTTLE':       (0.50, 0.80, 0.40),
-    'FIGHTER':       (0.45, 1.10, 0.25),
-    'CORVETTE':      (0.50, 1.00, 0.30),
     'FRIGATE':       (0.40, 1.20, 0.28),
     'DESTROYER':     (0.45, 1.30, 0.30),
     'CRUISER':       (0.50, 1.20, 0.32),
@@ -37,14 +34,10 @@ HULL_PROFILES = {
     'BATTLESHIP':    (0.60, 1.10, 0.38),
     'CARRIER':       (0.80, 1.00, 0.25),
     'DREADNOUGHT':   (0.55, 1.30, 0.40),
-    'CAPITAL':       (0.65, 1.20, 0.40),
     'TITAN':         (0.60, 1.40, 0.35),
     'INDUSTRIAL':    (0.60, 0.90, 0.50),
     'MINING_BARGE':  (0.70, 0.80, 0.45),
     'EXHUMER':       (0.65, 0.90, 0.40),
-    'EXPLORER':      (0.40, 1.10, 0.30),
-    'HAULER':        (0.70, 1.00, 0.50),
-    'EXOTIC':        (0.45, 1.00, 0.30),
 }
 
 # Default profile when ship_class is unknown
@@ -68,8 +61,8 @@ def create_mesh_object(name, verts, edges, faces):
     return obj
 
 
-def generate_hull(segments=5, scale=1.0, complexity=1.0, symmetry=True, style='MIXED',
-                  naming_prefix='', ship_class='FIGHTER', seed=0):
+def generate_hull(segments=5, scale=1.0, complexity=1.0, symmetry=True, style='SOLARI',
+                  naming_prefix='', ship_class='FRIGATE', seed=0):
     """
     Generate the main hull of the spaceship
 
@@ -81,7 +74,7 @@ def generate_hull(segments=5, scale=1.0, complexity=1.0, symmetry=True, style='M
         scale: Overall scale factor
         complexity: Geometry complexity (0.1-3.0)
         symmetry: Use symmetrical design
-        style: Design style
+        style: NovaForge faction style
         naming_prefix: Project naming prefix
         ship_class: Ship class key used to select hull profile
         seed: Random seed used for vertex noise
@@ -107,17 +100,8 @@ def generate_hull(segments=5, scale=1.0, complexity=1.0, symmetry=True, style='M
     # Add some variation to vertices
     bpy.ops.object.mode_set(mode='OBJECT')
     
-    # Apply style-specific modifications
-    if style == 'X4':
-        # X4 style: Angular, geometric
-        apply_x4_style(hull, scale)
-    elif style == 'ELITE':
-        # Elite style: Sleek, aerodynamic
-        apply_elite_style(hull, scale)
-    elif style == 'EVE':
-        # Eve style: Organic, flowing
-        apply_eve_style(hull, scale)
-    elif style == 'SOLARI':
+    # Apply NovaForge faction style modifications
+    if style == 'SOLARI':
         apply_solari_style(hull, scale)
     elif style == 'VEYREN':
         apply_veyren_style(hull, scale)
@@ -125,11 +109,8 @@ def generate_hull(segments=5, scale=1.0, complexity=1.0, symmetry=True, style='M
         apply_aurelian_style(hull, scale)
     elif style == 'KELDARI':
         apply_keldari_style(hull, scale)
-    elif style == 'NMS':
-        apply_nms_style(hull, scale)
     else:
-        # Mixed style
-        apply_mixed_style(hull, scale)
+        apply_solari_style(hull, scale)
     
     # Apply seed-driven vertex noise for organic uniqueness
     _apply_hull_vertex_noise(hull, scale, seed, complexity)
@@ -147,45 +128,6 @@ def generate_hull(segments=5, scale=1.0, complexity=1.0, symmetry=True, style='M
     edge_split.split_angle = math.radians(30)
 
     return hull
-
-
-def apply_x4_style(hull, scale):
-    """Apply X4 Foundations style - angular and geometric"""
-    bpy.context.view_layer.objects.active = hull
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.mesh.bevel(offset=0.1 * scale, segments=1)
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-
-def apply_elite_style(hull, scale):
-    """Apply Elite Dangerous style - sleek and aerodynamic"""
-    bpy.context.view_layer.objects.active = hull
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.transform.taper(value=0.7)
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-
-def apply_eve_style(hull, scale):
-    """Apply Eve Online style - organic and flowing"""
-    # Add a smooth deformation for organic look
-    bpy.context.view_layer.objects.active = hull
-    bpy.ops.object.mode_set(mode='EDIT')
-    # Add some organic variation with proportional editing concept
-    bpy.ops.mesh.subdivide(number_cuts=1)
-    bpy.ops.object.mode_set(mode='OBJECT')
-    
-    # Add a cast modifier for more organic curves
-    cast_mod = hull.modifiers.new(name="Cast", type='CAST')
-    cast_mod.factor = 0.3
-    cast_mod.cast_type = 'SPHERE'
-
-
-def apply_mixed_style(hull, scale):
-    """Apply mixed style from all inspirations"""
-    bpy.context.view_layer.objects.active = hull
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.mesh.bevel(offset=0.05 * scale, segments=2)
-    bpy.ops.object.mode_set(mode='OBJECT')
 
 
 def apply_solari_style(hull, scale):
@@ -227,25 +169,6 @@ def apply_keldari_style(hull, scale):
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.bevel(offset=0.15 * scale, segments=1)
     bpy.ops.object.mode_set(mode='OBJECT')
-
-
-def apply_nms_style(hull, scale):
-    """Apply No Man's Sky style - colorful, varied, mix of smooth and angular.
-
-    NMS ships combine rounded organic surfaces with sharp mechanical details.
-    The hull gets a moderate cast towards a sphere for that rounded look plus a
-    light bevel to keep panel edges visible.
-    """
-    bpy.context.view_layer.objects.active = hull
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.mesh.subdivide(number_cuts=1)
-    bpy.ops.mesh.bevel(offset=0.06 * scale, segments=2)
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    # Rounded cast for organic NMS silhouette
-    cast_mod = hull.modifiers.new(name="NMS_Cast", type='CAST')
-    cast_mod.factor = 0.2
-    cast_mod.cast_type = 'SPHERE'
 
 
 # ---------------------------------------------------------------------------
@@ -563,7 +486,7 @@ def _apply_hull_vertex_noise(hull, scale, seed, complexity):
     mesh.update()
 
 
-def generate_cockpit(scale=1.0, position=(0, 0, 0), ship_class='FIGHTER', style='MIXED',
+def generate_cockpit(scale=1.0, position=(0, 0, 0), ship_class='FRIGATE', style='SOLARI',
                      naming_prefix=''):
     """
     Generate cockpit/bridge for the ship
@@ -596,7 +519,7 @@ def generate_cockpit(scale=1.0, position=(0, 0, 0), ship_class='FIGHTER', style=
     return cockpit
 
 
-def generate_engines(count=2, scale=1.0, symmetry=True, style='MIXED', naming_prefix=''):
+def generate_engines(count=2, scale=1.0, symmetry=True, style='SOLARI', naming_prefix=''):
     """
     Generate engine units with archetype-based variation.
 
@@ -774,7 +697,7 @@ def _add_inner_cone(engine_obj, engine_size, naming_prefix=''):
     cone.parent = engine_obj
 
 
-def generate_wings(scale=1.0, symmetry=True, style='MIXED', naming_prefix=''):
+def generate_wings(scale=1.0, symmetry=True, style='SOLARI', naming_prefix=''):
     """
     Generate wing structures
     
@@ -953,6 +876,151 @@ def generate_turret_hardpoints(count=2, scale=1.0, symmetry=True, naming_prefix=
         turrets.append(base)
 
     return turrets
+
+
+def generate_cockpit_neck(hull, cockpit, scale, naming_prefix=''):
+    """Create a tapered fairing connecting the hull front face to the cockpit.
+
+    Places a stretched cube between the hull's forward extent and the
+    cockpit position so the two meshes appear joined rather than floating.
+
+    Args:
+        hull: The hull mesh object.
+        cockpit: The cockpit mesh object.
+        scale: Ship scale factor.
+        naming_prefix: Project naming prefix.
+
+    Returns:
+        The neck fairing object.
+    """
+    hull_front_y = hull.dimensions.y * 0.5
+    cockpit_y = cockpit.location.y
+    mid_y = (hull_front_y + cockpit_y) * 0.5
+    length = abs(cockpit_y - hull_front_y) + scale * 0.05
+    width = cockpit.dimensions.x * 0.9
+    height = cockpit.dimensions.z * 0.85
+
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, mid_y, 0))
+    neck = bpy.context.active_object
+    neck.name = _prefixed_name(naming_prefix, "Cockpit_Neck")
+    neck.scale = (width, length, height)
+    bpy.ops.object.transform_apply(scale=True)
+    bpy.ops.object.shade_smooth()
+    return neck
+
+
+def generate_engine_pylons(engines, hull, scale, naming_prefix=''):
+    """Create tapered pylons connecting each engine to the hull rear.
+
+    A cylinder is placed between the hull's aft extent and each engine,
+    producing a visible structural link.
+
+    Args:
+        engines: List of engine objects.
+        hull: The hull mesh object.
+        scale: Ship scale factor.
+        naming_prefix: Project naming prefix.
+
+    Returns:
+        List of pylon objects.
+    """
+    pylons = []
+    hull_rear_y = -hull.dimensions.y * 0.5
+
+    for i, engine in enumerate(engines):
+        ex, ey, ez = engine.location
+        mid_x = ex * 0.5
+        mid_y = (hull_rear_y + ey) * 0.5
+        length = abs(ey - hull_rear_y) + scale * 0.02
+        radius = scale * 0.03
+
+        bpy.ops.mesh.primitive_cylinder_add(
+            radius=radius,
+            depth=length,
+            location=(mid_x, mid_y, ez),
+        )
+        pylon = bpy.context.active_object
+        pylon.name = _prefixed_name(naming_prefix, f"Engine_Pylon_{i+1}")
+        # Angle the pylon toward the engine offset
+        pylon_angle = math.atan2(ex - mid_x, abs(ey - hull_rear_y)) if abs(ey - hull_rear_y) > 0 else 0
+        pylon.rotation_euler = (math.radians(90), 0, pylon_angle)
+
+        pylons.append(pylon)
+
+    return pylons
+
+
+def generate_wing_roots(wings, hull, scale, naming_prefix=''):
+    """Create fairing blocks connecting each wing to the hull side.
+
+    A scaled cube is placed at the junction of the hull and each wing
+    to visually bridge the gap.
+
+    Args:
+        wings: List of wing objects.
+        hull: The hull mesh object.
+        scale: Ship scale factor.
+        naming_prefix: Project naming prefix.
+
+    Returns:
+        List of wing root fairing objects.
+    """
+    fairings = []
+    hull_half_w = hull.dimensions.x * 0.5
+
+    for i, wing in enumerate(wings):
+        wx = wing.location.x
+        side_x = hull_half_w if wx > 0 else -hull_half_w
+        mid_x = (side_x + wx) * 0.5
+        width = abs(wx - side_x) + scale * 0.05
+        depth = wing.dimensions.y * 0.8
+        height = wing.dimensions.z * 1.2
+
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(mid_x, 0, 0))
+        fairing = bpy.context.active_object
+        fairing.name = _prefixed_name(naming_prefix, f"Wing_Root_{i+1}")
+        fairing.scale = (width, depth, height)
+        bpy.ops.object.transform_apply(scale=True)
+        bpy.ops.object.shade_smooth()
+        fairings.append(fairing)
+
+    return fairings
+
+
+def generate_weapon_pylons(weapons, hull, scale, naming_prefix=''):
+    """Create thin struts connecting weapon hardpoints to the hull.
+
+    A small cylinder is placed between each weapon and the hull
+    underside to make weapons look structurally attached.
+
+    Args:
+        weapons: List of weapon hardpoint objects.
+        hull: The hull mesh object.
+        scale: Ship scale factor.
+        naming_prefix: Project naming prefix.
+
+    Returns:
+        List of weapon pylon objects.
+    """
+    pylons = []
+    hull_bottom_z = -hull.dimensions.z * 0.5
+
+    for i, weapon in enumerate(weapons):
+        wx, wy, wz = weapon.location
+        mid_z = (hull_bottom_z + wz) * 0.5
+        length = abs(wz - hull_bottom_z) + scale * 0.01
+        radius = scale * 0.015
+
+        bpy.ops.mesh.primitive_cylinder_add(
+            radius=radius,
+            depth=length,
+            location=(wx, wy, mid_z),
+        )
+        pylon = bpy.context.active_object
+        pylon.name = _prefixed_name(naming_prefix, f"Weapon_Pylon_{i+1}")
+        pylons.append(pylon)
+
+    return pylons
 
 
 def register():
