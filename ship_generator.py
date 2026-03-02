@@ -292,6 +292,12 @@ def generate_spaceship(ship_class='FIGHTER', seed=1, generate_interior=True,
                 'pos': list(wing.location),
             })
 
+        # Wing root fairings
+        wing_roots = ship_parts.generate_wing_roots(
+            wings, hull, scale, naming_prefix=naming_prefix)
+        for fairing in wing_roots:
+            collection.objects.link(fairing)
+
     # ------------------------------------------------------------------
     # Stage 4 – Engines (archetype-varied)
     # ------------------------------------------------------------------
@@ -313,6 +319,20 @@ def generate_spaceship(ship_class='FIGHTER', seed=1, generate_interior=True,
         })
 
     # ------------------------------------------------------------------
+    # Stage 4b – Connecting geometry (pylons & fairings)
+    # ------------------------------------------------------------------
+    # Cockpit neck
+    neck = ship_parts.generate_cockpit_neck(
+        hull, cockpit, scale, naming_prefix=naming_prefix)
+    collection.objects.link(neck)
+
+    # Engine pylons
+    engine_pylons = ship_parts.generate_engine_pylons(
+        engines, hull, scale, naming_prefix=naming_prefix)
+    for pylon in engine_pylons:
+        collection.objects.link(pylon)
+
+    # ------------------------------------------------------------------
     # Stage 5 – Weapons & turrets
     # ------------------------------------------------------------------
     if config['weapons'] > 0:
@@ -328,6 +348,12 @@ def generate_spaceship(ship_class='FIGHTER', seed=1, generate_interior=True,
                 'type': 'HARDPOINT_MOUNT',
                 'pos': list(weapon.location),
             })
+
+        # Weapon pylons
+        weapon_pylons = ship_parts.generate_weapon_pylons(
+            weapons, hull, scale, naming_prefix=naming_prefix)
+        for pylon in weapon_pylons:
+            collection.objects.link(pylon)
 
     turret_count = turret_hardpoints if turret_hardpoints > 0 else config.get('turret_hardpoints', 0)
     turret_count = min(turret_count, MAX_TURRET_HARDPOINTS)

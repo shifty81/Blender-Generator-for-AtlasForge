@@ -187,7 +187,9 @@ def generate_accent_material(style='MIXED', seed=0):
     principled.inputs['Roughness'].default_value = 0.2
 
     # Add subtle emission for accent glow
-    principled.inputs['Emission Color'].default_value = palette['accent']
+    # 'Emission Color' was renamed from 'Emission' in Blender 4.0
+    emission_color_key = 'Emission Color' if 'Emission Color' in principled.inputs else 'Emission'
+    principled.inputs[emission_color_key].default_value = palette['accent']
     principled.inputs['Emission Strength'].default_value = 0.5
 
     links.new(principled.outputs['BSDF'], output.inputs['Surface'])

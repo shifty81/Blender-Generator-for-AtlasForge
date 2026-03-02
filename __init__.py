@@ -305,6 +305,13 @@ class SpaceshipGeneratorProperties(bpy.types.PropertyGroup):
         default=False
     )
 
+    batch_output_path: StringProperty(
+        name="Batch Output Path",
+        description="Directory to export OBJ files when batch generating all ship types",
+        subtype='DIR_PATH',
+        default=""
+    )
+
 
 class SPACESHIP_OT_generate(bpy.types.Operator):
     """Generate a procedural spaceship"""
@@ -598,6 +605,63 @@ class SPACESHIP_OT_catalog_render(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class SPACESHIP_OT_batch_generate(bpy.types.Operator):
+    """Generate all ship types and export each to the batch output folder"""
+    bl_idname = "mesh.batch_generate_all"
+    bl_label = "Batch Generate All Types"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        import os
+
+        props = context.scene.spaceship_props
+        output_dir = bpy.path.abspath(props.batch_output_path)
+
+        if not output_dir:
+            self.report({'ERROR'}, "Set a Batch Output Path first")
+            return {'CANCELLED'}
+
+        os.makedirs(output_dir, exist_ok=True)
+
+        count = 0
+        for ship_class in ship_generator.SHIP_CONFIGS:
+            hull = ship_generator.generate_spaceship(
+                ship_class=ship_class,
+                seed=props.seed,
+                generate_interior=props.generate_interior,
+                module_slots=props.module_slots,
+                hull_complexity=props.hull_complexity,
+                symmetry=props.symmetry,
+                style=props.style,
+                naming_prefix=props.naming_prefix,
+                hull_taper=props.hull_taper,
+            )
+
+            if props.generate_textures:
+                texture_generator.apply_textures_to_ship(
+                    hull,
+                    style=props.style,
+                    seed=props.seed,
+                    weathering=props.weathering,
+                )
+
+            # Select the hull and all children for export
+            bpy.ops.object.select_all(action='DESELECT')
+            hull.select_set(True)
+            for child in hull.children_recursive:
+                child.select_set(True)
+
+            filename = f"{ship_class}_seed{props.seed}.obj"
+            filepath = os.path.join(output_dir, filename)
+            atlas_exporter.export_obj(filepath)
+
+            count += 1
+
+        self.report({'INFO'},
+                     f"Batch generated {count} ship types to {output_dir}")
+        return {'FINISHED'}
+
+
 class SPACESHIP_PT_main_panel(bpy.types.Panel):
     """Main panel for spaceship generator"""
     bl_label = "Spaceship Generator"
@@ -641,6 +705,11 @@ class SPACESHIP_PT_main_panel(bpy.types.Panel):
         
         layout.separator()
         layout.operator("mesh.generate_spaceship", icon='MESH_CUBE')
+
+        layout.separator()
+        layout.label(text="Batch Generation:")
+        layout.prop(props, "batch_output_path")
+        layout.operator("mesh.batch_generate_all", icon='FILE_REFRESH')
 
         layout.separator()
         layout.label(text="NovaForge Integration:")
@@ -695,6 +764,7 @@ classes = (
     SPACESHIP_OT_import_novaforge,
     SPACESHIP_OT_batch_novaforge,
     SPACESHIP_OT_catalog_render,
+    SPACESHIP_OT_batch_generate,
     SPACESHIP_PT_main_panel,
 )
 

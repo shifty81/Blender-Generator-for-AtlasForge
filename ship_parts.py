@@ -955,6 +955,153 @@ def generate_turret_hardpoints(count=2, scale=1.0, symmetry=True, naming_prefix=
     return turrets
 
 
+def generate_cockpit_neck(hull, cockpit, scale, naming_prefix=''):
+    """Create a tapered fairing connecting the hull front face to the cockpit.
+
+    Places a stretched cube between the hull's forward extent and the
+    cockpit position so the two meshes appear joined rather than floating.
+
+    Args:
+        hull: The hull mesh object.
+        cockpit: The cockpit mesh object.
+        scale: Ship scale factor.
+        naming_prefix: Project naming prefix.
+
+    Returns:
+        The neck fairing object.
+    """
+    hull_front_y = hull.dimensions.y * 0.5
+    cockpit_y = cockpit.location.y
+    mid_y = (hull_front_y + cockpit_y) * 0.5
+    length = abs(cockpit_y - hull_front_y) + scale * 0.05
+    width = cockpit.dimensions.x * 0.9
+    height = cockpit.dimensions.z * 0.85
+
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, mid_y, 0))
+    neck = bpy.context.active_object
+    neck.name = _prefixed_name(naming_prefix, "Cockpit_Neck")
+    neck.scale = (width, length, height)
+    bpy.ops.object.transform_apply(scale=True)
+    bpy.ops.object.shade_smooth()
+    return neck
+
+
+def generate_engine_pylons(engines, hull, scale, naming_prefix=''):
+    """Create tapered pylons connecting each engine to the hull rear.
+
+    A cylinder is placed between the hull's aft extent and each engine,
+    producing a visible structural link.
+
+    Args:
+        engines: List of engine objects.
+        hull: The hull mesh object.
+        scale: Ship scale factor.
+        naming_prefix: Project naming prefix.
+
+    Returns:
+        List of pylon objects.
+    """
+    pylons = []
+    hull_rear_y = -hull.dimensions.y * 0.5
+
+    for i, engine in enumerate(engines):
+        ex, ey, ez = engine.location
+        mid_x = ex * 0.5
+        mid_y = (hull_rear_y + ey) * 0.5
+        length = abs(ey - hull_rear_y) + scale * 0.02
+        radius = scale * 0.03
+
+        bpy.ops.mesh.primitive_cylinder_add(
+            radius=radius,
+            depth=length,
+            location=(mid_x, mid_y, ez),
+        )
+        pylon = bpy.context.active_object
+        pylon.name = _prefixed_name(naming_prefix, f"Engine_Pylon_{i+1}")
+        pylon.rotation_euler = (math.radians(90), 0, 0)
+
+        # Taper toward the engine end
+        angle = math.atan2(ex - mid_x, abs(ey - hull_rear_y)) if abs(ey - hull_rear_y) > 0 else 0
+        pylon.rotation_euler.z = angle
+
+        pylons.append(pylon)
+
+    return pylons
+
+
+def generate_wing_roots(wings, hull, scale, naming_prefix=''):
+    """Create fairing blocks connecting each wing to the hull side.
+
+    A scaled cube is placed at the junction of the hull and each wing
+    to visually bridge the gap.
+
+    Args:
+        wings: List of wing objects.
+        hull: The hull mesh object.
+        scale: Ship scale factor.
+        naming_prefix: Project naming prefix.
+
+    Returns:
+        List of wing root fairing objects.
+    """
+    fairings = []
+    hull_half_w = hull.dimensions.x * 0.5
+
+    for i, wing in enumerate(wings):
+        wx = wing.location.x
+        side_x = hull_half_w if wx > 0 else -hull_half_w
+        mid_x = (side_x + wx) * 0.5
+        width = abs(wx - side_x) + scale * 0.05
+        depth = wing.dimensions.y * 0.8
+        height = wing.dimensions.z * 1.2
+
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(mid_x, 0, 0))
+        fairing = bpy.context.active_object
+        fairing.name = _prefixed_name(naming_prefix, f"Wing_Root_{i+1}")
+        fairing.scale = (width, depth, height)
+        bpy.ops.object.transform_apply(scale=True)
+        bpy.ops.object.shade_smooth()
+        fairings.append(fairing)
+
+    return fairings
+
+
+def generate_weapon_pylons(weapons, hull, scale, naming_prefix=''):
+    """Create thin struts connecting weapon hardpoints to the hull.
+
+    A small cylinder is placed between each weapon and the hull
+    underside to make weapons look structurally attached.
+
+    Args:
+        weapons: List of weapon hardpoint objects.
+        hull: The hull mesh object.
+        scale: Ship scale factor.
+        naming_prefix: Project naming prefix.
+
+    Returns:
+        List of weapon pylon objects.
+    """
+    pylons = []
+    hull_bottom_z = -hull.dimensions.z * 0.5
+
+    for i, weapon in enumerate(weapons):
+        wx, wy, wz = weapon.location
+        mid_z = (hull_bottom_z + wz) * 0.5
+        length = abs(wz - hull_bottom_z) + scale * 0.01
+        radius = scale * 0.015
+
+        bpy.ops.mesh.primitive_cylinder_add(
+            radius=radius,
+            depth=length,
+            location=(wx, wy, mid_z),
+        )
+        pylon = bpy.context.active_object
+        pylon.name = _prefixed_name(naming_prefix, f"Weapon_Pylon_{i+1}")
+        pylons.append(pylon)
+
+    return pylons
+
+
 def register():
     """Register this module"""
     pass
