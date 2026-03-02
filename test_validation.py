@@ -1307,6 +1307,9 @@ def test_batch_generate_operator():
         "bl_idname = \"mesh.batch_generate_all\"": 'batch generate bl_idname',
         'batch_output_path': 'batch output path property',
         'SPACESHIP_OT_batch_generate,': 'operator registered in classes tuple',
+        'class SPACESHIP_OT_novaforge_pipeline': 'NovaForge pipeline operator class',
+        "bl_idname = \"mesh.novaforge_pipeline_export\"": 'NovaForge pipeline bl_idname',
+        'SPACESHIP_OT_novaforge_pipeline,': 'pipeline operator registered in classes',
     }
 
     all_valid = True

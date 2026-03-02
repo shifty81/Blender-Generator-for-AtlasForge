@@ -1018,11 +1018,9 @@ def generate_engine_pylons(engines, hull, scale, naming_prefix=''):
         )
         pylon = bpy.context.active_object
         pylon.name = _prefixed_name(naming_prefix, f"Engine_Pylon_{i+1}")
-        pylon.rotation_euler = (math.radians(90), 0, 0)
-
-        # Taper toward the engine end
+        # Angle the pylon toward the engine offset
         angle = math.atan2(ex - mid_x, abs(ey - hull_rear_y)) if abs(ey - hull_rear_y) > 0 else 0
-        pylon.rotation_euler.z = angle
+        pylon.rotation_euler = (math.radians(90), 0, angle)
 
         pylons.append(pylon)
 
